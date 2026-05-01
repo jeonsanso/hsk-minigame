@@ -11,11 +11,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
-  const { model, contents, config } = await request.json<{
+  const { model, contents, config } = (await request.json()) as {
     model: string;
     contents: unknown;
     config?: unknown;
-  }>();
+  };
 
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
