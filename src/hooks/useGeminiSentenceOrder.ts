@@ -1,9 +1,6 @@
 import { useState, useCallback } from 'react';
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import type { SentenceOrderData } from '../types';
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
-const ai = new GoogleGenAI({ apiKey });
 
 const CACHE_KEY = 'hsk4_so_cache_v3';
 const MAX_CACHE = 20;
@@ -100,17 +97,23 @@ export function useGeminiSentenceOrder() {
         ? `\n이미 출제된 문제 (반드시 제외할 것):\n${usedSentences.slice(-10).map(s => `- ${s}`).join('\n')}`
         : '';
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
-        contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT + `\n\n이번 문제 방향: ${seed}` + avoidList }] }],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema,
-          temperature: 1.0,
-        },
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gemini-3.1-flash-lite-preview',
+          contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT + `\n\n이번 문제 방향: ${seed}` + avoidList }] }],
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema,
+            temperature: 1.0,
+          },
+        }),
       });
 
-      const text = result.text ?? '';
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const result = await res.json();
+      const text: string = result?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
       const raw: SentenceOrderData = JSON.parse(text);
 
       // 끝 구두점 제거 (。！？. ! ?)
